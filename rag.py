@@ -60,8 +60,8 @@ def create_vector_store(chunks):
     """
     persist_dir = "chroma_db"
     
-    # If the database directory already exists, load it instead of reconstructing it from scratch
-    if os.path.exists(persist_dir) and os.listdir(persist_dir):
+    # FIXED: Added os.path.isdir to ensure it's a real folder, not a flat file
+    if os.path.exists(persist_dir) and os.path.isdir(persist_dir) and os.listdir(persist_dir):
         vector_store = Chroma(
             persist_directory=persist_dir,
             embedding_function=embedding_model
@@ -69,12 +69,18 @@ def create_vector_store(chunks):
         # Add the new chunks to the existing database safely
         vector_store.add_documents(chunks)
     else:
-        # If it doesn't exist, create it completely fresh
+        # If it doesn't exist (or is a broken file), create a fresh directory
+        # First, clear it out if it was a flat file causing issues
+        if os.path.exists(persist_dir) and not os.path.isdir(persist_dir):
+            os.remove(persist_dir)
+            
         vector_store = Chroma.from_documents(
             documents=chunks,
             embedding=embedding_model,
             persist_directory=persist_dir
         )
+        
+    return vector_store
         
     return vector_store
 # Create a retriever 
